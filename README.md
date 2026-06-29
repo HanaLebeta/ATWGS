@@ -8,7 +8,7 @@
 <a href="#">
 <img alt="Paper" src="https://img.shields.io/badge/Paper-Coming%20Soon-b31b1b?style=for-the-badge&logo=arxiv&logoColor=white">
 </a>
-<a href="https://hanalebeta.github.io/ATW_GS/">
+<a href="https://hanalebeta.github.io/ATWGS/">
 <img alt="Project Page" src="https://img.shields.io/badge/Project-Page-4A90D9?style=for-the-badge&logo=githubpages&logoColor=white">
 </a>
 <a href="#">
@@ -59,8 +59,8 @@ Hana L. Goshu<sup>1</sup>, Tadesse G. Wakjira<sup>2</sup>, Kin-Man Lam<sup>1</su
 Tested with Python 3.10, PyTorch 2.7 (CUDA 12.x), and a recent NVIDIA GPU.
 
 ```bash
-git clone https://github.com/HanaLebeta/ATW_GS.git
-cd ATW_GS
+git clone https://github.com/HanaLebeta/ATWGS.git
+cd ATWGS
 
 conda create -n atw-gs python=3.10 -y
 conda activate atw-gs
