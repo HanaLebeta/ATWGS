@@ -1,0 +1,88 @@
+import os
+import time
+from argparse import ArgumentParser
+from typing import List
+import torch
+import torchvision
+from tqdm import tqdm
+from lpips import LPIPS
+from arguments import GroupParams, ModelParams, PipelineParams, get_combined_args
+from gaussian_renderer import GaussianModel, render
+from scene import Camera, Scene
+from utils.general_utils import safe_state
+from utils.image_utils import psnr as get_psnr
+from utils.loss_utils import ssim as get_ssim
+lpips_fn = None
+
+def render_set(model_path: str, name: str, iteration: int, views: List[Camera], gaussians: GaussianModel, pipeline: GroupParams, background: torch.Tensor, lpips: bool=False, vis: bool=False, filter3d: bool=False, gaussian_window: bool=False, hybrid_window: bool=False, footprint_floor: bool=False, depth_coupled: bool=False, exact_window_grad: bool=False, adaptive_window: bool=False, aniso_tau: float=2.0) -> None:
+    render_path = os.path.join(model_path, name, f'ours_{iteration}', 'renders')
+    gts_path = os.path.join(model_path, name, f'ours_{iteration}', 'gt')
+    os.makedirs(render_path, exist_ok=True)
+    os.makedirs(gts_path, exist_ok=True)
+    if len(views) == 0:
+        print(f'No views for {name}, skipping.')
+        return
+    psnr_avg = 0.0
+    ssim_avg = 0.0
+    lpips_avg = 0.0
+    start = time.time()
+    for idx, view in enumerate(tqdm(views, desc='Rendering progress')):
+        rendering = render(view, gaussians, pipeline, background, filter3d=filter3d, gaussian_window=gaussian_window, hybrid_window=hybrid_window, footprint_floor=footprint_floor, depth_coupled=depth_coupled, exact_window_grad=exact_window_grad, adaptive_window=adaptive_window, aniso_tau=aniso_tau)['render']
+        gt = view.original_image[0:3, :, :]
+        if vis:
+            torchvision.utils.save_image(rendering, os.path.join(render_path, f'{idx:05d}' + '.png'))
+            torchvision.utils.save_image(gt, os.path.join(gts_path, f'{idx:05d}' + '.png'))
+        psnr_avg += get_psnr(gt, rendering).mean().double()
+        ssim_avg += get_ssim(gt, rendering).mean().double()
+        if lpips:
+            global lpips_fn
+            if lpips_fn is None:
+                lpips_fn = LPIPS(net='vgg').eval().cuda()
+            lpips_avg += lpips_fn(gt, rendering, normalize=True).mean().item()
+    psnr_val = psnr_avg / len(views)
+    ssim_val = ssim_avg / len(views)
+    lpips_val = lpips_avg / len(views)
+    content = f'psnr_avg: {psnr_val:.4f}; ssim_avg: {ssim_val:.4f}; lpips_avg: {lpips_val:.5f}; time_avg: {(time.time() - start) / len(views):.4f}'
+    print(content)
+    with open(os.path.join(model_path, name, f'ours_{iteration}', 'results.txt'), 'w') as fp:
+        fp.write(content)
+
+@torch.no_grad()
+def launch(dataset: ModelParams, pipeline: PipelineParams, iteration: int, skip_train: bool, skip_test: bool, lpips: bool=False, vis: bool=False, filter3d: bool=False, gaussian_window: bool=False, hybrid_window: bool=False, footprint_floor: bool=False, depth_coupled: bool=False, exact_window_grad: bool=False, adaptive_window: bool=False, aniso_tau: float=2.0) -> None:
+    gaussians = GaussianModel(sh_degree=dataset.sh_degree)
+    scales = [1.0, 2.0, 4.0, 8.0]
+    scene = Scene(args=dataset, load_iteration=iteration, gaussians=gaussians, shuffle=False, resolution_scales=scales)
+    bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
+    background = torch.tensor(bg_color, dtype=torch.float32, device='cuda')
+    if not skip_train:
+        for scale in scales:
+            print(f'eval train scale-{scale}')
+            trainCameras = scene.getTrainCameras(scale).copy()
+            render_set(model_path=dataset.model_path, name=f'train_{scale}', iteration=iteration, views=trainCameras, gaussians=gaussians, pipeline=pipeline, background=background, lpips=lpips, vis=vis, filter3d=filter3d, gaussian_window=gaussian_window, hybrid_window=hybrid_window, footprint_floor=footprint_floor, depth_coupled=depth_coupled, exact_window_grad=exact_window_grad, adaptive_window=adaptive_window, aniso_tau=aniso_tau)
+    if not skip_test:
+        for scale in scales:
+            print(f'eval test scale-{scale}')
+            testCameras = scene.getTestCameras(scale).copy()
+            render_set(model_path=dataset.model_path, name=f'test_{scale}', iteration=iteration, views=testCameras, gaussians=gaussians, pipeline=pipeline, background=background, lpips=lpips, vis=vis, filter3d=filter3d, gaussian_window=gaussian_window, hybrid_window=hybrid_window, footprint_floor=footprint_floor, depth_coupled=depth_coupled, exact_window_grad=exact_window_grad, adaptive_window=adaptive_window, aniso_tau=aniso_tau)
+if __name__ == '__main__':
+    parser = ArgumentParser(description='Testing script parameters')
+    model = ModelParams(parser)
+    pipeline = PipelineParams(parser)
+    parser.add_argument('--iteration', default=-1, type=int)
+    parser.add_argument('--skip_train', action='store_true')
+    parser.add_argument('--skip_test', action='store_true')
+    parser.add_argument('--lpips', action='store_true')
+    parser.add_argument('--vis', action='store_true')
+    parser.add_argument('--quiet', action='store_true')
+    parser.add_argument('--filter3d', action='store_true')
+    parser.add_argument('--gaussian_window', action='store_true')
+    parser.add_argument('--hybrid_window', action='store_true')
+    parser.add_argument('--footprint_floor', action='store_true')
+    parser.add_argument('--depth_coupled', action='store_true')
+    parser.add_argument('--exact_window_grad', action='store_true')
+    parser.add_argument('--adaptive_window', action='store_true')
+    parser.add_argument('--aniso_tau', type=float, default=2.0)
+    args = get_combined_args(parser)
+    print('Rendering ' + args.model_path)
+    safe_state(args.quiet)
+    launch(dataset=model.extract(args), pipeline=pipeline.extract(args), iteration=args.iteration, skip_train=args.skip_train, skip_test=args.skip_test, lpips=args.lpips, vis=args.vis, filter3d=args.filter3d, gaussian_window=args.gaussian_window, hybrid_window=args.hybrid_window, footprint_floor=args.footprint_floor, depth_coupled=args.depth_coupled, exact_window_grad=args.exact_window_grad, adaptive_window=args.adaptive_window, aniso_tau=args.aniso_tau)
