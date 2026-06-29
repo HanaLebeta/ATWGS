@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATW-GS: Anisotropic Transmittance Windows for Anti-Aliased 3D Gaussian Splatting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="static/css/style.css">
+  <script>window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(','\\)']] } };</script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+
+  <section class="section title-section">
+    <h1 class="project-title">
+      <span class="accent">ATW-GS</span>: Anisotropic Transmittance Windows for Anti-Aliased 3D Gaussian Splatting
+    </h1>
+    <div class="authors">
+      <a href="https://www.hanagoshu.com">Hana L. Goshu</a><sup>1</sup>,
+      <a href="https://www.ai4riselab.com">Tadesse G. Wakjira</a><sup>2</sup>,
+      Kin-Man Lam<sup>1</sup>
+    </div>
+    <div class="affiliations">
+      <span><sup>1</sup>The Hong Kong Polytechnic University</span>
+      <span><sup>2</sup>Kennesaw State University</span>
+    </div>
+    <div class="venue">
+      <span class="venue-badge">Preprint, 2026 (Under Review)</span>
+    </div>
+    <div class="buttons-row">
+      <a class="btn btn-disabled" href="#" onclick="return false;" title="Coming soon">
+        <i class="fa-solid fa-file-pdf"></i> Paper
+        <span class="btn-note">(coming soon)</span>
+      </a>
+      <a class="btn" href="https://github.com/HanaLebeta/ATW_GS" target="_blank">
+        <i class="fa-brands fa-github"></i> Code
+      </a>
+      <a class="btn" href="https://jonbarron.info/mipnerf360/" target="_blank">
+        <i class="fa-solid fa-database"></i> Data
+      </a>
+    </div>
+
+    <div class="highlights" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="highlight"><span class="num">29.76</span><span class="lbl">PSNR (dB)</span></div>
+      <div class="highlight"><span class="num">0.892</span><span class="lbl">SSIM</span></div>
+      <div class="highlight"><span class="num">0.141</span><span class="lbl">LPIPS</span></div>
+    </div>
+  </section>
+
+  <section class="section" id="teaser">
+    <div class="image-container">
+      <img src="static/images/qualitative.png" alt="ATW-GS qualitative comparison">
+    </div>
+    <p class="caption">
+      Multi-scale comparison on Mip-NeRF&nbsp;360: ATW-GS suppresses the dilation that 3D Gaussian
+      Splatting exhibits at sampling rates unseen during training, while preserving quality at the
+      training rate.
+    </p>
+  </section>
+
+  <section class="section">
+    <h2>Abstract</h2>
+    <p class="abstract-text">
+      3D Gaussian Splatting (3DGS) enables real-time novel view synthesis but suffers from aliasing
+      artifacts when rendered at sampling rates that differ from those used during training. Existing
+      anti-aliasing methods mitigate this issue by prefiltering Gaussian primitives or integrating their
+      response over the pixel area; however, they rely on scalar alpha composition, which treats per-pixel
+      transmittance as a single value and therefore discards the spatial structure within each pixel. More
+      recent spatially aware approaches maintain a per-pixel transmittance window, but represent it as an
+      axis-aligned box, preventing the model from capturing the true orientation of projected splats. To
+      address this limitation, we propose Anisotropic Transmittance Windows for 3D Gaussian Splatting
+      (ATW-GS), which models per-pixel transmittance as a full covariance Gaussian that preserves splat
+      orientation throughout the front-to-back composition sequence. Furthermore, ATW-GS computes each
+      splat&rsquo;s contribution weight using the exact error-function integral of the pixel footprint
+      projected onto the window&rsquo;s marginal axes. This ensures that consistency between the anisotropic
+      window state and the per-splat weight computation. Extensive experiments on the NeRF Synthetic
+      (Blender) and Mip-NeRF&nbsp;360 datasets demonstrate that ATW-GS consistently outperforms
+      state-of-the-art aliasing methods across both single-scale and multi-scale evaluation regimes.
+    </p>
+  </section>
+
+  <section class="section">
+    <h2>Method</h2>
+    <p class="caption">
+      ATW-GS replaces point evaluation with an anisotropic per-pixel transmittance window propagated
+      through alpha compositing, without changing the training pipeline.
+    </p>
+    <div class="image-container">
+      <img src="static/images/architecture.png" alt="ATW-GS method overview">
+    </div>
+    <div class="module-list">
+      <p>
+        <strong>Point evaluation (3DGS)</strong> &mdash; samples each Gaussian at the pixel centre and
+        ignores the pixel footprint, so under-sampling at lower render rates produces dilation and
+        staircase artifacts.
+      </p>
+      <p>
+        <strong>Box transmittance window</strong> &mdash; integrates the footprint but keeps it
+        axis-aligned, discarding the orientation of the absorbed region.
+      </p>
+      <p>
+        <strong>Anisotropic transmittance window (Ours)</strong> &mdash; propagates a Gaussian window
+        with state $(\boldsymbol{\mu}_w, \Sigma_w, m)$ &mdash; centre, $2\times 2$ covariance, and mass &mdash;
+        that rotates and narrows to match the absorbed region as splats are composited front-to-back,
+        integrating each splat over its true oriented footprint.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Main Results</h2>
+    <p class="table-note">Scale-averaged results on the Blender dataset. T4 reports PSNR only. Best per column in bold.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2">Method</th>
+            <th colspan="3">T1 (&times;1 train)</th>
+            <th colspan="3">T2 (&times;1/8 train)</th>
+            <th rowspan="2">T4</th>
+          </tr>
+          <tr>
+            <th>PSNR</th><th>SSIM</th><th>LPIPS</th>
+            <th>PSNR</th><th>SSIM</th><th>LPIPS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>TensoRF</td><td>30.87</td><td>.964</td><td>.052</td><td>28.47</td><td>.925</td><td>.099</td><td>31.30</td></tr>
+          <tr><td>3DGS</td><td>24.95</td><td>.891</td><td>.068</td><td>24.11</td><td>.886</td><td>.097</td><td>29.90</td></tr>
+          <tr><td>Scaffold-GS</td><td>24.92</td><td>.895</td><td>.070</td><td>22.37</td><td>.862</td><td>.121</td><td>28.48</td></tr>
+          <tr><td>2DGS</td><td>23.79</td><td>.867</td><td>.095</td><td>25.94</td><td>.909</td><td>.104</td><td>28.47</td></tr>
+          <tr><td>3D-HGS</td><td>25.19</td><td>.896</td><td>.066</td><td>24.38</td><td>.887</td><td>.100</td><td>30.99</td></tr>
+          <tr class="section-divider"><td colspan="8"></td></tr>
+          <tr><td>Tri-MipRF</td><td>29.58</td><td>.951</td><td>.055</td><td>26.17</td><td>.874</td><td>.166</td><td>34.27</td></tr>
+          <tr><td>3DGS+EWA</td><td>29.76</td><td>.962</td><td>.036</td><td>26.47</td><td>.907</td><td>.132</td><td>31.52</td></tr>
+          <tr><td>3DGS+SS</td><td>28.57</td><td>.950</td><td>.040</td><td>26.68</td><td>.914</td><td>.074</td><td>32.76</td></tr>
+          <tr><td>Mip-Splatting</td><td>31.73</td><td>.973</td><td>.028</td><td>29.64</td><td>.939</td><td>.084</td><td>34.72</td></tr>
+          <tr><td>Analytic-Splatting</td><td>31.59</td><td>.972</td><td>.030</td><td>29.53</td><td>.933</td><td>.077</td><td>35.07</td></tr>
+          <tr class="section-divider"><td colspan="8"></td></tr>
+          <tr><td>GB</td><td>35.58</td><td>.981</td><td>.020</td><td>31.04</td><td>.943</td><td>.069</td><td>36.19</td></tr>
+          <tr class="section-divider"><td colspan="8"></td></tr>
+          <tr class="ours-row">
+            <td><strong>ATW-GS (Ours)</strong></td>
+            <td class="best">35.80</td><td class="best">.981</td><td class="best">.020</td>
+            <td class="best">31.19</td><td class="best">.943</td><td class="best">.068</td>
+            <td class="best">36.35</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="table-note" style="margin-top:2.2rem;">Scale-averaged PSNR on Mip-NeRF 360. Best per column in bold.</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Method</th><th>T3a (&times;1)</th><th>T3b (&times;1/8)</th><th>T3c (MS)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>3DGS</td><td>23.68</td><td>22.25</td><td>27.55</td></tr>
+          <tr><td>Scaffold-GS</td><td>23.87</td><td>22.14</td><td>27.50</td></tr>
+          <tr><td>2DGS</td><td>23.24</td><td>23.98</td><td>26.67</td></tr>
+          <tr><td>3D-HGS</td><td>23.92</td><td>23.03</td><td>28.56</td></tr>
+          <tr class="section-divider"><td colspan="4"></td></tr>
+          <tr><td>3DGS+EWA</td><td>27.87</td><td>24.08</td><td>28.11</td></tr>
+          <tr><td>3DGS+SS</td><td>25.86</td><td>24.42</td><td>28.76</td></tr>
+          <tr><td>Mip-Splatting</td><td>28.47</td><td>27.15</td><td>29.25</td></tr>
+          <tr><td>Analytic-Splatting</td><td>28.23</td><td>26.34</td><td>29.21</td></tr>
+          <tr class="section-divider"><td colspan="4"></td></tr>
+          <tr><td>GB</td><td>29.17</td><td>27.47</td><td>29.53</td></tr>
+          <tr class="section-divider"><td colspan="4"></td></tr>
+          <tr class="ours-row">
+            <td><strong>ATW-GS (Ours)</strong></td>
+            <td class="best">29.76</td><td class="best">27.85</td><td class="best">30.02</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Qualitative Visualization</h2>
+
+    <h3>Window ablation</h3>
+    <div class="image-container">
+      <img src="static/images/ablation.png" alt="Window ablation">
+    </div>
+    <p class="caption">
+      Effect of the transmittance window at reduced scales: point evaluation (w/o window) produces
+      dilation that the anisotropic window removes, recovering the reference appearance.
+    </p>
+  </section>
+
+  <footer class="footer">
+    <p>This code builds on
+      <a href="https://github.com/graphdeco-inria/gaussian-splatting" target="_blank">3D Gaussian Splatting</a>,
+      the Gaussian Blending transmittance-window rasteriser, and
+      <a href="https://github.com/autonomousvision/mip-splatting" target="_blank">Mip-Splatting</a>.</p>
+    <p>&copy; 2026 &middot; ATW-GS &middot; Static project page</p>
+  </footer>
+
+</body>
+</html>
