@@ -93,18 +93,18 @@
     </div>
     <div class="module-list">
       <p>
-        <strong>Point evaluation (3DGS)</strong> &mdash; samples each Gaussian at the pixel centre and
-        ignores the pixel footprint, so under-sampling at lower render rates produces dilation and
+        <strong>Point evaluation (3DGS):</strong> samples each Gaussian at the pixel centre and
+        ignores the pixel footprint, so undersampling at lower render rates produces dilation and
         staircase artifacts.
       </p>
       <p>
-        <strong>Box transmittance window</strong> &mdash; integrates the footprint but keeps it
-        axis-aligned, discarding the orientation of the absorbed region.
+        <strong>Box transmittance window:</strong> integrates the footprint but keeps it
+        axis aligned, discarding the orientation of the absorbed region.
       </p>
       <p>
-        <strong>Anisotropic transmittance window (Ours)</strong> &mdash; propagates a Gaussian window
-        with state $(\boldsymbol{\mu}_w, \Sigma_w, m)$ &mdash; centre, $2\times 2$ covariance, and mass &mdash;
-        that rotates and narrows to match the absorbed region as splats are composited front-to-back,
+        <strong>Anisotropic transmittance window (Ours):</strong> propagates a Gaussian window
+        with state $(\boldsymbol{\mu}_w, \Sigma_w, m)$ (centre, $2\times 2$ covariance, and mass)
+        that rotates and narrows to match the absorbed region as splats are composited front to back,
         integrating each splat over its true oriented footprint.
       </p>
     </div>
