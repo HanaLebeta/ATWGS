@@ -118,6 +118,10 @@ requirements.txt     Python dependencies
 }
 ```
 
+## Acknowledgements
+
+This project builds on [3D Gaussian Splatting](https://github.com/graphdeco-inria/gaussian-splatting) and related anti-aliasing and spatially-aware composition methods. We thank the authors for releasing their work.
+
 ## License
 
 Released under the [MIT License](LICENSE).
